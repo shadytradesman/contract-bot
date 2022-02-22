@@ -1,0 +1,8 @@
+2022-02-22 09:59:07,899:WARNING:discord.client: PyNaCl is not installed, voice will NOT be supported
+2022-02-22 09:59:07,899:INFO:discord.client: logging in using static token
+2022-02-22 09:59:08,297:INFO:discord.gateway: Shard ID None has sent the IDENTIFY payload.
+2022-02-22 09:59:08,448:INFO:discord.gateway: Shard ID None has connected to Gateway: ["gateway-prd-main-gfgh",{"micros":63981,"calls":["discord-sessions-green-prd-2-92",{"micros":63019,"calls":["start_session",{"micros":57486,"calls":["api-prd-main-mq79",{"micros":42330,"calls":["get_user",{"micros":11748},"add_authorized_ip",{"micros":1907},"get_guilds",{"micros":5849},"coros_wait",{"micros":1}]}]},"guilds_connect",{"micros":1,"calls":[]},"presence_connect",{"micros":1,"calls":[]}]}]}] (Session ID: 81416515b1ca03a5383d11dd5bb55211).
+2022-02-22 09:59:38,003:INFO:discord.client: Cleaning up tasks.
+2022-02-22 09:59:38,004:INFO:discord.client: Cleaning up after 1 tasks.
+2022-02-22 09:59:38,006:INFO:discord.client: All tasks finished cancelling.
+2022-02-22 09:59:38,007:INFO:discord.client: Closing the event loop.
