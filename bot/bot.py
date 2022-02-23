@@ -20,13 +20,13 @@ class ContractClient(discord.Client):
 		self.tokens = tokens
 		super().__init__()
 
-
 	async def on_ready(self):
-		print('Logged on as {0}!'.format(self.user))
+		logger.info('Logged on as {0}!'.format(self.user))
 
 	async def on_message(self, message):
 		if message.content.startswith(self.tokens["prefix"]):
 			response = self.get_response_for_message(message)
+			logger.debug('Responding to message {} with {}'.format(message.content, response))
 			await self.respond_to_message(message, response)
 	
 	def get_response_for_message(self, message):
@@ -69,7 +69,6 @@ class ContractClient(discord.Client):
 		return "\n".join(usage_lines)
 
 	def roll_dice_response(self, message, parsed_message):
-		print("parsed message: ", parsed_message)
 		first_word_tokens = parsed_message[0]
 		for token in first_word_tokens:
 			if not token.isdigit():
@@ -91,12 +90,12 @@ class ContractClient(discord.Client):
 		return self.contract_roll(num_dice=num_dice, difficulty=difficulty, exert=exert, label=label)
 
 	def contract_roll(self, num_dice, difficulty=6, exert=False, label=None):
-		gt_10_diff_text = ""
+		gt_9_diff_text = ""
 		if difficulty > 9:
 			difference = difficulty - 9
 			num_dice -= max(difference, 0)
 			difficulty = 9
-			gt_10_diff_text = "(Difficulty > 10 decreases dice)"
+			gt_9_diff_text = "(Difficulty > 9 decreases dice)"
 		results = [random.randint(1, 10) for x in range(num_dice)]
 		results.sort(reverse=True)
 		outcome = 0
@@ -111,13 +110,13 @@ class ContractClient(discord.Client):
 			outcome += 1
 		exert_text = "*Exerting* " if exert else ""
 		label_text = "({}) ".format(label) if label else ""
-		return "rolled {} dice at Difficulty {} {}\n{}`{}`\n{}Outcome: **{}**".format(num_dice, difficulty, gt_10_diff_text, exert_text, results, label_text, outcome)
+		return "rolled {} dice at Difficulty {} {}\n{}`{}`\n{}Outcome: **{}**".format(num_dice, difficulty, gt_9_diff_text, exert_text, results, label_text, outcome)
 		
 
 	async def respond_to_message(self, message, response):
 		channel = message.channel
 		author = message.author
-		await channel.send("**{}** {}".format(author.name, response))
+		await channel.send("**<@{}>** {}".format(author.id, response))
 		
 
 def run_discord_bot():
