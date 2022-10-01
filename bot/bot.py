@@ -42,16 +42,16 @@ class ContractClient(discord.Client):
 			return self.error_usage_message("only use one {} when rolling.".format(self.tokens["roll_seperator"]))
 		if first_word_parts[0] == self.tokens["help"]:
 			return self.help_message()
-		if first_word_parts[0] in (self.tokens["flip_high"], self.tokens["flip_low"]):
-			return self.flip(is_high=first_word_parts[0] == self.tokens["flip_high"])
+		if first_word_parts[0].lower() in (self.tokens["flip_high"], self.tokens["flip_low"]):
+			return self.flip(is_high=first_word_parts[0].lower() == self.tokens["flip_high"])
 		if first_word_parts[0].isdigit():
 			return self.roll_dice_response(message, parsed_message=[first_word_parts, *words[1:]])
 		return self.error_usage_message("did not recognize message format.")
 
 	def flip(self, is_high=True):
 		result = random.randint(1, 10)
-		success = (is_high && result >= 6) || ((not is_high) && result <= 5)
-		return "rolled high/low calling **{}**\n{}`{}`\n{}Outcome: **{}**".format("high" if is_high else "low", result, "SUCCESS" if success else "FAILURE")
+		success = (is_high and result >= 6) or ((not is_high) and result <= 5)
+		return "rolled high/low calling **{}**\n`{}`\nOutcome: **{}**".format("high" if is_high else "low", result, "SUCCESS" if success else "FAILURE")
 
 	def help_message(self):
 		help_lines = []
