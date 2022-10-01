@@ -11,6 +11,9 @@ DEFAULT_TOKENS = {
 		"prefix": "!!",
 		"roll_seperator": "@",
 		"exertion": "ex",
+		"help": "help",
+		"flip_high": "h",
+		"flip_low": "l",
 }
 
 
@@ -37,11 +40,18 @@ class ContractClient(discord.Client):
 		first_word_parts = words[0].split(self.tokens["roll_seperator"])
 		if len(first_word_parts) > 2: 
 			return self.error_usage_message("only use one {} when rolling.".format(self.tokens["roll_seperator"]))
-		if first_word_parts[0] == "help":
+		if first_word_parts[0] == self.tokens["help"]
 			return self.help_message()
+		if first_word_parts[0] in (self.tokens["flip_high"], self.tokens["flip_low"]):
+			return self.flip(is_high=first_word_parts[0] == self.tokens["flip_high"])
 		if first_word_parts[0].isdigit():
 			return self.roll_dice_response(message, parsed_message=[first_word_parts, *words[1:]])
 		return self.error_usage_message("did not recognize message format.")
+
+	def flip(self, is_high=True):
+		result = random.randint(1, 10)
+		success = (is_high && result >= 6) || ((not is_high) && result <= 5)
+		return "rolled high/low calling **{}**\n{}`{}`\n{}Outcome: **{}**".format("high" if is_high else "low", result, "SUCCESS" if success else "FAILURE")
 
 	def help_message(self):
 		help_lines = []
@@ -60,19 +70,21 @@ class ContractClient(discord.Client):
 	def usage_message(self):
 		usage_lines = []
 		usage_lines.append("**Usage:**")
-		usage_lines.append("Display help: `{}help`".format(self.tokens["prefix"]))
-		usage_lines.append("Roll 3 dice difficulty 6: `{}3`".format(self.tokens["prefix"]))
-		usage_lines.append("Roll 4 dice difficulty 8: `{}4{}8`".format(self.tokens["prefix"], self.tokens["roll_seperator"]))
-		usage_lines.append("Roll 5 dice difficulty 6 and exert: `{}5 {}`".format(self.tokens["prefix"], self.tokens["exertion"]))
-		usage_lines.append("Roll 3 dice difficulty 6 and label 'init': `{}3 init`".format(self.tokens["prefix"]))
-		usage_lines.append("Roll 4 dice difficulty 7, exert, and label 'blue': `{}4{}7 {} blue`".format(self.tokens["prefix"], self.tokens["roll_seperator"], self.tokens["exertion"]))
+		usage_lines.append("`{}{}` Display help".format(self.tokens["prefix"], self.tokens["help"]))
+		usage_lines.append("`{}3` Roll 3 dice difficulty 6".format(self.tokens["prefix"]))
+		usage_lines.append("`{}4{}8` Roll 4 dice difficulty 8".format(self.tokens["prefix"], self.tokens["roll_seperator"]))
+		usage_lines.append("`{}5 {}` Roll 5 dice difficulty 6 and exert".format(self.tokens["prefix"], self.tokens["exertion"]))
+		usage_lines.append("`{}3 init` Roll 3 dice difficulty 6 and label 'init'".format(self.tokens["prefix"]))
+		usage_lines.append("`{}4{}7 {} blue` Roll 4 dice difficulty 7, exert, and label 'blue'".format(self.tokens["prefix"], self.tokens["roll_seperator"], self.tokens["exertion"]))
+		usage_lines.append("`{}{}` Flip a coin calling 'high'".format(self.tokens["prefix"], self.tokens["flip_high"]))
+		usage_lines.append("`{}{}` Flip a coin calling 'low'".format(self.tokens["prefix"], self.tokens["flip_low"]))
 		return "\n".join(usage_lines)
 
 	def roll_dice_response(self, message, parsed_message):
 		first_word_tokens = parsed_message[0]
 		for token in first_word_tokens:
 			if not token.isdigit():
-				return self.error_usage_message(message, "{} is not a number".format(token))
+				return self.error_usage_message("{} is not a number".format(token))
 		num_dice = int(first_word_tokens[0])
 		if num_dice >= 50:
 			return "Error - please roll fewer than 50 dice"
