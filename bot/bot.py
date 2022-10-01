@@ -40,7 +40,7 @@ class ContractClient(discord.Client):
 		first_word_parts = words[0].split(self.tokens["roll_seperator"])
 		if len(first_word_parts) > 2: 
 			return self.error_usage_message("only use one {} when rolling.".format(self.tokens["roll_seperator"]))
-		if first_word_parts[0] == self.tokens["help"]
+		if first_word_parts[0] == self.tokens["help"]:
 			return self.help_message()
 		if first_word_parts[0] in (self.tokens["flip_high"], self.tokens["flip_low"]):
 			return self.flip(is_high=first_word_parts[0] == self.tokens["flip_high"])
