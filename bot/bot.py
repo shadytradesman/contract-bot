@@ -21,7 +21,9 @@ class ContractClient(discord.Client):
 
 	def __init__(self, tokens=DEFAULT_TOKENS):
 		self.tokens = tokens
-		super().__init__()
+		intents = discord.Intents.default()
+                intents.message_content = True
+                super().__init__(intents=intents)
 
 	async def on_ready(self):
 		logger.info('Logged on as {0}!'.format(self.user))
