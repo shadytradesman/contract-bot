@@ -1,10 +1,12 @@
 import sys
 import logging
-import discord
 from .bot import run_discord_bot
+import os
+
 
 def setup_logging():
-	handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+	cwd = os.getcwd()
+	handler = logging.FileHandler(filename='{}/discord.log'.format(cwd), encoding='utf-8', mode='w')
 	handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 
 	logger = logging.getLogger('discord')

@@ -22,8 +22,8 @@ class ContractClient(discord.Client):
 	def __init__(self, tokens=DEFAULT_TOKENS):
 		self.tokens = tokens
 		intents = discord.Intents.default()
-                intents.message_content = True
-                super().__init__(intents=intents)
+		intents.message_content = True
+		super().__init__(intents=intents)
 
 	async def on_ready(self):
 		logger.info('Logged on as {0}!'.format(self.user))
@@ -31,7 +31,7 @@ class ContractClient(discord.Client):
 	async def on_message(self, message):
 		if message.content.startswith(self.tokens["prefix"]):
 			response = self.get_response_for_message(message)
-			logger.debug('Responding to message {} with {}'.format(message.content, response))
+			logger.debug('Responding to message with {}'.format(response))
 			await self.respond_to_message(message, response)
 	
 	def get_response_for_message(self, message):
