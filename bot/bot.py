@@ -92,14 +92,14 @@ class ContractClient(discord.Client):
 			return "Error - please roll fewer than 50 dice"
 		difficulty = int(first_word_tokens[1]) if len(first_word_tokens) > 1 else 6
 		exert = False
-		label = None
+		label_tokens = []
 		if len(parsed_message) > 1:
 			for token in parsed_message[1:]:
 				if token == self.tokens["exertion"]:
 					exert = True
 				else:
-					label = token
-		
+					label_tokens.append(token)
+		label = ' '.join(label_tokens)
 		
 		return self.contract_roll(num_dice=num_dice, difficulty=difficulty, exert=exert, label=label)
 
