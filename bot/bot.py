@@ -19,6 +19,7 @@ TOKENS = {
 
 @commands.command(name='!')
 async def roll_dice(ctx, *arg):
+	logger.debug("rolling dice")
 	exert = False
 	label = None
 	label_args = []
@@ -60,11 +61,13 @@ async def roll_dice(ctx, *arg):
 
 @commands.command(name='!l')
 async def roll_low(ctx):
+	logger.debug("calling low")
 	flip_results = flip(ctx, False)
 	await respond_to_message(ctx, flip_results)
 
 @commands.command(name='!h')
 async def roll_high(ctx):
+	logger.debug("calling high")
 	flip_results = flip(ctx, True)
 	await respond_to_message(ctx, flip_results)
 
