@@ -22,13 +22,13 @@ async def roll_dice(ctx, *arg):
 	logger.debug("rolling dice")
 	exert = False
 	label = None
-	label_args = []
 	if len(arg) == 1:
 		if TOKENS['help'] in arg[0]:
 			help_message_result = help_message()
 			await respond_to_message(ctx, help_message_result)
 			return
 	elif len(arg) >= 2:
+		label_args = []
 		if TOKENS['exertion'] == arg[1]:
 			exert=True
 			if len(arg) > 2:
@@ -77,12 +77,10 @@ async def help(ctx):
 	await respond_to_message(ctx, help_message_result)
 
 def help_message():
-	help_lines = []
-	help_lines.append("**Welcome to The Contract's Dice Rolling Bot!**")
-	help_lines.append("This bot can help you roll dice for the game The Contract https://www.TheContractRPG.com/ ")
-	help_lines.append("Contribute to my source code: {}".format(bot_repo_url))
-	help_lines.append("Add this bot to your server: {}".format(bot_invite_url))
-	help_lines.append(usage_message())
+	help_lines = ["**Welcome to The Contract's Dice Rolling Bot!**",
+                  "This bot can help you roll dice for the game The Contract https://www.TheContractRPG.com/ ",
+                  "Contribute to my source code: {}".format(bot_repo_url),
+                  "Add this bot to your server: {}".format(bot_invite_url), usage_message()]
 	return "\n".join(help_lines)
 
 def error_usage_message(error=None):
@@ -91,14 +89,14 @@ def error_usage_message(error=None):
 	return usage_message()
 
 def usage_message():
-	usage_lines = []
-	usage_lines.append("**Usage:**")
-	usage_lines.append("`{} {}` Display help".format(TOKENS["prefix"], TOKENS["help"]))
-	usage_lines.append("`{} 3` Roll 3 dice difficulty 6".format(TOKENS["prefix"]))
-	usage_lines.append("`{} 4{}8` Roll 4 dice difficulty 8".format(TOKENS["prefix"], TOKENS["roll_seperator"]))
-	usage_lines.append("`{} 5 {}` Roll 5 dice difficulty 6 and exert".format(TOKENS["prefix"], TOKENS["exertion"]))
-	usage_lines.append("`{}{}` Flip a coin calling 'high'".format(TOKENS["prefix"], TOKENS["flip_high"]))
-	usage_lines.append("`{}{}` Flip a coin calling 'low'".format(TOKENS["prefix"], TOKENS["flip_low"]))
+	usage_lines = ["**Usage:**",
+				   "`{} {}` Display help".format(TOKENS["prefix"], TOKENS["help"]),
+				   "`{} 3` Roll 3 dice default difficulty 6".format(TOKENS["prefix"]),
+				   "`{} 4{}8` Roll 4 dice difficulty 8".format(TOKENS["prefix"], TOKENS["roll_seperator"]),
+				   "`{} 5 {}` Roll 5 dice default difficulty 6 and exert".format(TOKENS["prefix"], TOKENS["exertion"]),
+				   "`{}{}` Flip a coin calling 'high'".format(TOKENS["prefix"], TOKENS["flip_high"]),
+				   "`{}{}` Flip a coin calling 'low'".format(TOKENS["prefix"], TOKENS["flip_low"]),
+				   ]
 	return "\n".join(usage_lines)
 
 async def respond_to_message(ctx, response):
