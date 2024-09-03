@@ -1,13 +1,14 @@
 import logging
 import os
 import random
-
 import discord
+from discord.ext import commands
+
 
 logger = logging.getLogger('bot')
 bot_invite_url = "https://discord.com/api/oauth2/authorize?client_id=944989207665967124&permissions=309237738560&scope=bot"
 bot_repo_url = "https://github.com/shadytradesman/contract-bot"
-DEFAULT_TOKENS = {
+TOKENS = {
 		"prefix": "!!",
 		"roll_seperator": "@",
 		"exertion": "ex",
@@ -16,124 +17,130 @@ DEFAULT_TOKENS = {
 		"flip_low": "l",
 }
 
+@commands.command(name='!')
+async def roll_dice(ctx, *arg):
+	logger.debug("rolling dice")
+	exert = False
+	label = None
+	if len(arg) == 1:
+		if TOKENS['help'] in arg[0]:
+			help_message_result = help_message()
+			await respond_to_message(ctx, help_message_result)
+			return
+	elif len(arg) >= 2:
+		label_args = []
+		if TOKENS['exertion'] == arg[1]:
+			exert=True
+			if len(arg) > 2:
+				label_args = arg[2:]
+		else:
+			label_args = arg[1:]
+		if label_args:
+			label = " ".join(label_args)
+	else:
+		await respond_to_message(ctx, error_usage_message("did not recognize message format"))
+		return
 
-class ContractClient(discord.Client):
+	roll_values = arg[0].split(TOKENS['roll_seperator'])
+	if not roll_values[0].isdigit():
+		await respond_to_message(ctx, error_usage_message("num dice not a number"))
+		return
+	num_dice = int(roll_values[0])
+	if num_dice >= 50:
+		await respond_to_message(ctx, error_usage_message("too many dice, use less than 50"))
+		return
 
-	def __init__(self, tokens=DEFAULT_TOKENS):
-		self.tokens = tokens
-		intents = discord.Intents.default()
-		intents.message_content = True
-		super().__init__(intents=intents)
+	if len(roll_values) > 1 and not roll_values[1].isdigit():
+		await respond_to_message(ctx, error_usage_message("difficulty not a number"))
+		return
+	difficulty = int(roll_values[1]) if ((TOKENS['roll_seperator'] in arg[0]) and (roll_values[1].isdigit)) else 6
 
-	async def on_ready(self):
-		logger.info('Logged on as {0}!'.format(self.user))
+	msg = contract_roll(num_dice, difficulty, exert, label)
+	await respond_to_message(ctx, msg)
 
-	async def on_message(self, message):
-		if message.content.startswith(self.tokens["prefix"]):
-			response = self.get_response_for_message(message)
-			logger.debug('Responding to message with {}'.format(response))
-			await self.respond_to_message(message, response)
-	
-	def get_response_for_message(self, message):
-		content = message.content[len(self.tokens["prefix"]):]
-		words = content.split(" ")
-		if len(words) == 0:
-			return self.error_usage_message()
-		first_word_parts = words[0].split(self.tokens["roll_seperator"])
-		if len(first_word_parts) > 2: 
-			return self.error_usage_message("only use one {} when rolling.".format(self.tokens["roll_seperator"]))
-		if first_word_parts[0] == self.tokens["help"]:
-			return self.help_message()
-		if first_word_parts[0].lower() in (self.tokens["flip_high"], self.tokens["flip_low"]):
-			return self.flip(is_high=first_word_parts[0].lower() == self.tokens["flip_high"])
-		if first_word_parts[0].isdigit():
-			return self.roll_dice_response(message, parsed_message=[first_word_parts, *words[1:]])
-		return self.error_usage_message("did not recognize message format.")
 
-	def flip(self, is_high=True):
-		result = random.randint(1, 10)
-		success = (is_high and result >= 6) or ((not is_high) and result <= 5)
-		return "rolled high/low calling **{}**\n`{}`\nOutcome: **{}**".format("high" if is_high else "low", result, "SUCCESS" if success else "FAILURE")
+@commands.command(name='!l')
+async def roll_low(ctx):
+	logger.debug("calling low")
+	flip_results = flip(ctx, False)
+	await respond_to_message(ctx, flip_results)
 
-	def help_message(self):
-		help_lines = []
-		help_lines.append("**Welcome to The Contract's Dice Rolling Bot!**")
-		help_lines.append("This bot can help you roll dice for the game The Contract https://www.TheContractRPG.com/ ")
-		help_lines.append("Contribute to my source code: {}".format(bot_repo_url))
-		help_lines.append("Add this bot to your server: {}".format(bot_invite_url))
-		help_lines.append(self.usage_message())
-		return "\n".join(help_lines)
+@commands.command(name='!h')
+async def roll_high(ctx):
+	logger.debug("calling high")
+	flip_results = flip(ctx, True)
+	await respond_to_message(ctx, flip_results)
 
-	def error_usage_message(self, error=None):
-		if error:
-			return "Error - {}\n{}".format(error, self.usage_message())
-		return self.usage_message()
+@commands.command(name='! help')
+async def help(ctx):
+	help_message_result = help_message()
+	await respond_to_message(ctx, help_message_result)
 
-	def usage_message(self):
-		usage_lines = []
-		usage_lines.append("**Usage:**")
-		usage_lines.append("`{}{}` Display help".format(self.tokens["prefix"], self.tokens["help"]))
-		usage_lines.append("`{}3` Roll 3 dice difficulty 6".format(self.tokens["prefix"]))
-		usage_lines.append("`{}4{}8` Roll 4 dice difficulty 8".format(self.tokens["prefix"], self.tokens["roll_seperator"]))
-		usage_lines.append("`{}5 {}` Roll 5 dice difficulty 6 and exert".format(self.tokens["prefix"], self.tokens["exertion"]))
-		usage_lines.append("`{}3 init` Roll 3 dice difficulty 6 and label 'init'".format(self.tokens["prefix"]))
-		usage_lines.append("`{}4{}7 {} blue` Roll 4 dice difficulty 7, exert, and label 'blue'".format(self.tokens["prefix"], self.tokens["roll_seperator"], self.tokens["exertion"]))
-		usage_lines.append("`{}{}` Flip a coin calling 'high'".format(self.tokens["prefix"], self.tokens["flip_high"]))
-		usage_lines.append("`{}{}` Flip a coin calling 'low'".format(self.tokens["prefix"], self.tokens["flip_low"]))
-		return "\n".join(usage_lines)
+def help_message():
+	help_lines = ["**Welcome to The Contract's Dice Rolling Bot!**",
+                  "This bot can help you roll dice for the game The Contract https://www.TheContractRPG.com/ ",
+                  "Contribute to my source code: {}".format(bot_repo_url),
+                  "Add this bot to your server: {}".format(bot_invite_url), usage_message()]
+	return "\n".join(help_lines)
 
-	def roll_dice_response(self, message, parsed_message):
-		first_word_tokens = parsed_message[0]
-		for token in first_word_tokens:
-			if not token.isdigit():
-				return self.error_usage_message("{} is not a number".format(token))
-		num_dice = int(first_word_tokens[0])
-		if num_dice >= 50:
-			return "Error - please roll fewer than 50 dice"
-		difficulty = int(first_word_tokens[1]) if len(first_word_tokens) > 1 else 6
-		exert = False
-		label = None
-		if len(parsed_message) > 1:
-			for token in parsed_message[1:]:
-				if token == self.tokens["exertion"]:
-					exert = True
-				else:
-					label = token
-		
-		
-		return self.contract_roll(num_dice=num_dice, difficulty=difficulty, exert=exert, label=label)
+def error_usage_message(error=None):
+	if error:
+		return "Error - {}\n{}".format(error, usage_message())
+	return usage_message()
 
-	def contract_roll(self, num_dice, difficulty=6, exert=False, label=None):
-		gt_9_diff_text = ""
-		if difficulty > 9:
-			difference = difficulty - 9
-			num_dice -= max(difference, 0)
-			difficulty = 9
-			gt_9_diff_text = "(Difficulty > 9 decreases dice)"
-		results = [random.randint(1, 10) for x in range(num_dice)]
-		results.sort(reverse=True)
-		outcome = 0
-		for res in results:
-			if res >= difficulty:
-				outcome += 1
-			if res == 10:
-				outcome += 1
-			if res == 1:
-				outcome -= 1
-		if exert:
+def usage_message():
+	usage_lines = ["**Usage:**",
+				   "`{} {}` Display help".format(TOKENS["prefix"], TOKENS["help"]),
+				   "`{} 3` Roll 3 dice default difficulty 6".format(TOKENS["prefix"]),
+				   "`{} 4{}8` Roll 4 dice difficulty 8".format(TOKENS["prefix"], TOKENS["roll_seperator"]),
+				   "`{} 5 {}` Roll 5 dice default difficulty 6 and exert".format(TOKENS["prefix"], TOKENS["exertion"]),
+				   "`{}{}` Flip a coin calling 'high'".format(TOKENS["prefix"], TOKENS["flip_high"]),
+				   "`{}{}` Flip a coin calling 'low'".format(TOKENS["prefix"], TOKENS["flip_low"]),
+				   ]
+	return "\n".join(usage_lines)
+
+async def respond_to_message(ctx, response):
+	channel = ctx.message.channel
+	author = ctx.message.author
+	await channel.send("**<@{}>** {}".format(author.id, response))
+
+def flip(ctx, is_high):
+	result = random.randint(1, 10)
+	success = (is_high and result >= 6) or ((not is_high) and result <= 5)
+	return "rolled high/low calling **{}**\n`{}`\nOutcome: **{}**".format("high" if is_high else "low", result, "SUCCESS" if success else "FAILURE")
+
+
+def contract_roll( num_dice, difficulty=6, exert=False, label_text=None):
+	gt_9_diff_text = ""
+	if difficulty > 9:
+		difference = difficulty - 9
+		num_dice -= max(difference, 0)
+		difficulty = 9
+		gt_9_diff_text = "(Difficulty > 9 decreases dice)"
+	results = [random.randint(1, 10) for x in range(num_dice)]
+	results.sort(reverse=True)
+	outcome = 0
+	for res in results:
+		if res >= difficulty:
 			outcome += 1
-		exert_text = "*Exerting* " if exert else ""
-		label_text = "({}) ".format(label) if label else ""
-		return "rolled {} dice at Difficulty {} {}\n{}`{}`\n{}Outcome: **{}**".format(num_dice, difficulty, gt_9_diff_text, exert_text, results, label_text, outcome)
-		
+		if res == 10:
+			outcome += 1
+		if res == 1:
+			outcome -= 1
+	if exert:
+		outcome += 1
+	exert_text = "*Exerting* " if exert else ""
+	response = []
+	response.append("rolled {} dice at Difficulty {} {}".format(num_dice, difficulty, gt_9_diff_text))
+	response.append("{}`{}`".format(exert_text, results))
+	response.append("\({}\) Outcome: **{}**".format(label_text, outcome) if label_text is not None else "Outcome: **{}**".format(outcome))
+	return "\n".join(response)
 
-	async def respond_to_message(self, message, response):
-		channel = message.channel
-		author = message.author
-		await channel.send("**<@{}>** {}".format(author.id, response))
-		
 
-def run_discord_bot():
-	client = ContractClient()
-	client.run(os.environ["BOT_PASSWORD"])
-	return 0
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix='!', intents=intents)
+bot.add_command(roll_dice)
+bot.add_command(roll_low)
+bot.add_command(roll_high)
+bot.run(os.environ["BOT_PASSWORD"])
