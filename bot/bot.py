@@ -1,11 +1,9 @@
 import logging
 import os
 import random
-from venv import create
 
 import discord
 from discord.ext import commands
-from discord.ext.commands import command, before_invoke
 
 logger = logging.getLogger('bot')
 bot_invite_url = "https://discord.com/api/oauth2/authorize?client_id=944989207665967124&permissions=309237738560&scope=bot"
@@ -19,20 +17,11 @@ TOKENS = {
 		"flip_low": "l",
 }
 
-@commands.command(name='!help')
-async def call_for_help(ctx):
-	help_message_result = help_message()
-	await respond_to_message(ctx, help_message_result)
-
-async def invalid_usage(ctx, error):
-	await respond_to_message(ctx, error_usage_message(error))
-
 async def roll_dice(ctx, dice, diff, *arg):
 	logger.debug("rolling dice")
 	exert = False
 	label = None
 	exert_or_labels = arg[0]
-
 
 	if len(exert_or_labels) == 1:
 		if TOKENS['help'] in exert_or_labels:
@@ -51,10 +40,6 @@ async def roll_dice(ctx, dice, diff, *arg):
 			label_args = exert_or_labels[1:]
 		if label_args:
 			label = " ".join(label_args)
-	num_dice = dice
-	if num_dice >= 50:
-		await respond_to_message(ctx, error_usage_message("too many dice, use less than 50"))
-		return
 
 	msg = contract_roll(dice, diff, exert, label)
 	await respond_to_message(ctx, msg)
@@ -71,6 +56,13 @@ async def roll_high(ctx):
 	logger.debug("calling high")
 	flip_results = flip(True)
 	await respond_to_message(ctx, flip_results)
+
+async def invalid_usage(ctx, error):
+	await respond_to_message(ctx, error_usage_message(error))
+
+@commands.command(name='!help')
+async def call_for_help(ctx):
+	await respond_to_message(ctx, help_message())
 
 @commands.command(name='! help')
 async def help_selection(ctx):
@@ -111,7 +103,6 @@ def flip(is_high):
 	success = (is_high and result >= 6) or ((not is_high) and result <= 5)
 	return "rolled high/low calling **{}**\n`{}`\nOutcome: **{}**".format("high" if is_high else "low", result, "SUCCESS" if success else "FAILURE")
 
-
 def contract_roll( num_dice, difficulty=6, exert=False, label_text=None):
 	gt_9_diff_text = ""
 	if difficulty > 9:
@@ -149,7 +140,6 @@ class CommandHelper:
 async def dice_roll(ctx, dice, diff, args):
 	await roll_dice(ctx, dice, diff, args)
 
-
 def create_roll_combinations(dice_bot):
 	min_dice = 1
 	max_dice = 50
@@ -177,16 +167,17 @@ create_roll_combinations(bot)
 
 @bot.event
 async def on_command_error(ctx, error):
-	command_from_user = list(ctx.invoked_with)
-	if command_from_user[0] != '!':
+	command_from_user = ctx.invoked_with
+	commands_list = list(command_from_user)
+	if commands_list[0] != '!':
 		return
 
 	contextual_error = ""
-	if not command_from_user[1].isdigit():
+	if not commands_list[1].isdigit():
 		contextual_error = contextual_error + "\nnumber of dice expected, input not a valid number"
 
 	if TOKENS['roll_seperator'] in command_from_user:
-		roll = ctx.invoked_with[1:].split('@')
+		roll = command_from_user[1:].split('@')
 		dice = roll[0]
 		diff = roll[1]
 
@@ -198,6 +189,12 @@ async def on_command_error(ctx, error):
 			contextual_error = contextual_error + "\ndifficulty is not a number"
 		if int(diff) > 14:
 			contextual_error = contextual_error + "\ndifficulty is not a valid number, maximum is 14"
+	else:
+		roll = command_from_user[1:].split(' ')
+		dice = roll[0]
+
+		if int(dice) > 49:
+			contextual_error = contextual_error + "\ntoo many dice rolled, maximum is 49"
 
 	contextual_error = contextual_error + "\n"
 	await invalid_usage(ctx, contextual_error)
