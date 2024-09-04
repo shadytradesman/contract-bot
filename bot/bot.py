@@ -1,9 +1,11 @@
 import logging
 import os
 import random
+from venv import create
+
 import discord
 from discord.ext import commands
-
+from discord.ext.commands import command, before_invoke
 
 logger = logging.getLogger('bot')
 bot_invite_url = "https://discord.com/api/oauth2/authorize?client_id=944989207665967124&permissions=309237738560&scope=bot"
@@ -17,62 +19,61 @@ TOKENS = {
 		"flip_low": "l",
 }
 
-@commands.command(name='!')
-async def roll_dice(ctx, *arg):
+@commands.command(name='!help')
+async def call_for_help(ctx):
+	help_message_result = help_message()
+	await respond_to_message(ctx, help_message_result)
+
+async def invalid_usage(ctx, error):
+	await respond_to_message(ctx, error_usage_message(error))
+
+async def roll_dice(ctx, dice, diff, *arg):
 	logger.debug("rolling dice")
 	exert = False
 	label = None
-	if len(arg) == 1:
-		if TOKENS['help'] in arg[0]:
+	exert_or_labels = arg[0]
+
+
+	if len(exert_or_labels) == 1:
+		if TOKENS['help'] in exert_or_labels:
 			help_message_result = help_message()
 			await respond_to_message(ctx, help_message_result)
 			return
-	elif len(arg) >= 2:
+		elif TOKENS['exertion'] in exert_or_labels:
+			exert = True
+	elif len(exert_or_labels) >= 2:
 		label_args = []
-		if TOKENS['exertion'] == arg[1]:
+		if TOKENS['exertion'] == exert_or_labels[1]:
 			exert=True
-			if len(arg) > 2:
-				label_args = arg[2:]
+			if len(exert_or_labels) > 2:
+				label_args = exert_or_labels[2:]
 		else:
-			label_args = arg[1:]
+			label_args = exert_or_labels[1:]
 		if label_args:
 			label = " ".join(label_args)
-	else:
-		await respond_to_message(ctx, error_usage_message("did not recognize message format"))
-		return
-
-	roll_values = arg[0].split(TOKENS['roll_seperator'])
-	if not roll_values[0].isdigit():
-		await respond_to_message(ctx, error_usage_message("num dice not a number"))
-		return
-	num_dice = int(roll_values[0])
+	num_dice = dice
 	if num_dice >= 50:
 		await respond_to_message(ctx, error_usage_message("too many dice, use less than 50"))
 		return
 
-	if len(roll_values) > 1 and not roll_values[1].isdigit():
-		await respond_to_message(ctx, error_usage_message("difficulty not a number"))
-		return
-	difficulty = int(roll_values[1]) if ((TOKENS['roll_seperator'] in arg[0]) and (roll_values[1].isdigit)) else 6
-
-	msg = contract_roll(num_dice, difficulty, exert, label)
+	msg = contract_roll(dice, diff, exert, label)
 	await respond_to_message(ctx, msg)
 
 
 @commands.command(name='!l')
 async def roll_low(ctx):
 	logger.debug("calling low")
-	flip_results = flip(ctx, False)
+	flip_results = flip(False)
 	await respond_to_message(ctx, flip_results)
 
 @commands.command(name='!h')
 async def roll_high(ctx):
 	logger.debug("calling high")
-	flip_results = flip(ctx, True)
+	flip_results = flip(True)
 	await respond_to_message(ctx, flip_results)
 
 @commands.command(name='! help')
-async def help(ctx):
+async def help_selection(ctx):
 	help_message_result = help_message()
 	await respond_to_message(ctx, help_message_result)
 
@@ -90,10 +91,11 @@ def error_usage_message(error=None):
 
 def usage_message():
 	usage_lines = ["**Usage:**",
-				   "`{} {}` Display help".format(TOKENS["prefix"], TOKENS["help"]),
-				   "`{} 3` Roll 3 dice default difficulty 6".format(TOKENS["prefix"]),
-				   "`{} 4{}8` Roll 4 dice difficulty 8".format(TOKENS["prefix"], TOKENS["roll_seperator"]),
-				   "`{} 5 {}` Roll 5 dice default difficulty 6 and exert".format(TOKENS["prefix"], TOKENS["exertion"]),
+				   "`{}{}` Display help".format(TOKENS["prefix"], TOKENS["help"]),
+				   "`{}3` Roll 3 dice default difficulty 6".format(TOKENS["prefix"]),
+				   "`{}4{}8` Roll 4 dice difficulty 8".format(TOKENS["prefix"], TOKENS["roll_seperator"]),
+				   "`{}5 {}` Roll 5 dice default difficulty 6 and exert".format(TOKENS["prefix"], TOKENS["exertion"]),
+				   "`{}5 {} to slay the dragon` Roll 5 dice default difficulty 6 and exert using an action label".format(TOKENS["prefix"], TOKENS["exertion"]),
 				   "`{}{}` Flip a coin calling 'high'".format(TOKENS["prefix"], TOKENS["flip_high"]),
 				   "`{}{}` Flip a coin calling 'low'".format(TOKENS["prefix"], TOKENS["flip_low"]),
 				   ]
@@ -104,7 +106,7 @@ async def respond_to_message(ctx, response):
 	author = ctx.message.author
 	await channel.send("**<@{}>** {}".format(author.id, response))
 
-def flip(ctx, is_high):
+def flip(is_high):
 	result = random.randint(1, 10)
 	success = (is_high and result >= 6) or ((not is_high) and result <= 5)
 	return "rolled high/low calling **{}**\n`{}`\nOutcome: **{}**".format("high" if is_high else "low", result, "SUCCESS" if success else "FAILURE")
@@ -137,10 +139,67 @@ def contract_roll( num_dice, difficulty=6, exert=False, label_text=None):
 	return "\n".join(response)
 
 
+class CommandHelper:
+	def __init__(self, dice_diff, num_dice, difficulty):
+		@commands.command(name=dice_diff)
+		async def d_command(ctx, *args):
+			await dice_roll(ctx, num_dice, difficulty, args)
+		self.command = d_command
+
+async def dice_roll(ctx, dice, diff, args):
+	await roll_dice(ctx, dice, diff, args)
+
+
+def create_roll_combinations(dice_bot):
+	min_dice = 1
+	max_dice = 50
+	min_diff = 1
+	max_diff = 15
+
+	for dice in range(min_dice,max_dice):
+		dice_diff = "!{}".format(dice)
+		default_difficulty = 6
+		obj = CommandHelper(dice_diff, dice, default_difficulty)
+		dice_bot.add_command(obj.command)
+
+		for diff in range(min_diff,max_diff):
+			dice_diff = "!{}@{}".format(dice, diff)
+			obj = CommandHelper(dice_diff, dice, diff)
+			dice_bot.add_command(obj.command)
+
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
-bot.add_command(roll_dice)
 bot.add_command(roll_low)
 bot.add_command(roll_high)
+bot.add_command(call_for_help)
+create_roll_combinations(bot)
+
+@bot.event
+async def on_command_error(ctx, error):
+	command_from_user = list(ctx.invoked_with)
+	if command_from_user[0] != '!':
+		return
+
+	contextual_error = ""
+	if not command_from_user[1].isdigit():
+		contextual_error = contextual_error + "\nnumber of dice expected, input not a valid number"
+
+	if TOKENS['roll_seperator'] in command_from_user:
+		roll = ctx.invoked_with[1:].split('@')
+		dice = roll[0]
+		diff = roll[1]
+
+		if not dice.isdigit():
+			contextual_error = contextual_error + "\ndice is not a number"
+		if int(dice) > 49:
+			contextual_error = contextual_error + "\ntoo many dice rolled, maximum is 49"
+		if not diff.isdigit():
+			contextual_error = contextual_error + "\ndifficulty is not a number"
+		if int(diff) > 14:
+			contextual_error = contextual_error + "\ndifficulty is not a valid number, maximum is 14"
+
+	contextual_error = contextual_error + "\n"
+	await invalid_usage(ctx, contextual_error)
+
 bot.run(os.environ["BOT_PASSWORD"])
