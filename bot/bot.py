@@ -26,8 +26,9 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+
 @bot.event
-async def on_command_error(ctx, error):
+async def on_command_error(ctx, _error):
 	command_from_user = ctx.invoked_with
 	if command_from_user[0] != '!':
 		return
@@ -50,12 +51,15 @@ async def on_command_error(ctx, error):
 		contextual_error = contextual_error + "\nDifficulty is not a number."
 	elif difficulty is not None and (int(difficulty) > MAX_DIFFICULTY):
 		contextual_error = contextual_error + "\nDifficulty is not a valid number, maximum is {}.".format(MAX_DIFFICULTY)
+	elif difficulty is not None and (int(difficulty) < MIN_DIFFICULTY):
+		contextual_error = contextual_error + "\nDifficulty is not a valid number, minimum is {}.".format(MIN_DIFFICULTY)
 
 	if len(contextual_error) == 0:
-		contextual_error =  "Incorrect usage, please try again."
+		contextual_error = "Incorrect usage, please try again."
 
 	contextual_error = contextual_error + "\n"
 	await invalid_usage(ctx, contextual_error)
+
 
 @bot.command(name='!l')
 async def roll_low(ctx):
@@ -63,7 +67,22 @@ async def roll_low(ctx):
 	flip_results = flip(False)
 	await respond_to_message(ctx, flip_results)
 
+
 @bot.command(name='!h')
+async def roll_high(ctx):
+	logger.debug("calling high")
+	flip_results = flip(True)
+	await respond_to_message(ctx, flip_results)
+
+
+@bot.command(name='!L')
+async def roll_low(ctx):
+	logger.debug("calling low")
+	flip_results = flip(False)
+	await respond_to_message(ctx, flip_results)
+
+
+@bot.command(name='!H')
 async def roll_high(ctx):
 	logger.debug("calling high")
 	flip_results = flip(True)
@@ -73,43 +92,53 @@ async def roll_high(ctx):
 async def call_for_help(ctx):
 	await respond_to_message(ctx, help_message())
 
+
 async def invalid_usage(ctx, error):
 	await respond_to_message(ctx, error_usage_message(error))
 
+
 def help_message():
-	help_lines = ["**Welcome to The Contract's Dice Rolling Bot!**",
-                  "This bot can help you roll dice for the game The Contract https://www.TheContractRPG.com/ ",
-                  "Contribute to my source code: {}".format(bot_repo_url),
-                  "Add this bot to your server: {}".format(bot_invite_url), usage_message()]
+	help_lines = [
+		"**Welcome to The Contract's Dice Rolling Bot!**",
+		"This bot can help you roll dice for the game The Contract https://www.TheContractRPG.com/ ",
+		"Contribute to my source code: {}".format(bot_repo_url),
+		"Add this bot to your server: {}".format(bot_invite_url), usage_message()
+	]
 	return "\n".join(help_lines)
+
 
 def error_usage_message(error=None):
 	if error:
 		return "Error - {}\n{}".format(error, usage_message())
 	return usage_message()
 
+
 def usage_message():
-	usage_lines = ["**Usage:**",
-				   "`{}{}` Display help".format(TOKENS["prefix"], TOKENS["help"]),
-				   "`{}3` Roll 3 dice default difficulty 6".format(TOKENS["prefix"]),
-				   "`{}4{}8` Roll 4 dice difficulty 8".format(TOKENS["prefix"], TOKENS["roll_seperator"]),
-				   "`{}5 {}` Roll 5 dice default difficulty 6 and exert".format(TOKENS["prefix"], TOKENS["exertion"]),
-				   "`{}5 Shaggy initiative` Roll 5 dice default difficulty 6 and label the roll for Shaggy's initiative ".format(TOKENS["prefix"]),
-				   "`{}5 {} to sneak under the cameras` Roll 5 dice default difficulty 6 and exert using a label for the roll".format(TOKENS["prefix"], TOKENS["exertion"]),
-				   "`{}{}` Flip a coin calling 'high'".format(TOKENS["prefix"], TOKENS["flip_high"]),
-				   "`{}{}` Flip a coin calling 'low'".format(TOKENS["prefix"], TOKENS["flip_low"]),
-				   ]
+	usage_lines = [
+		"**Usage:**",
+		"`{}{}` Display help".format(TOKENS["prefix"], TOKENS["help"]),
+		"`{}3` Roll 3 dice default Difficulty 6".format(TOKENS["prefix"]),
+		"`{}4{}8` Roll 4 dice Difficulty 8".format(TOKENS["prefix"], TOKENS["roll_seperator"]),
+		"`{}5 {}` Roll 5 dice default Difficulty 6 and exert".format(TOKENS["prefix"], TOKENS["exertion"]),
+		"`{}5 Shaggy initiative` Roll 5 dice default Difficulty 6 and label `Shaggy initiative`".format(TOKENS["prefix"]),
+		"`{}5 {} to sneak under the cameras` Roll 5 dice default Difficulty 6 and exert using a label for the roll".format(TOKENS["prefix"], TOKENS["exertion"]),
+		"`{}{}` Flip a coin calling 'high'".format(TOKENS["prefix"], TOKENS["flip_high"]),
+		"`{}{}` Flip a coin calling 'low'".format(TOKENS["prefix"], TOKENS["flip_low"]),
+	]
 	return "\n".join(usage_lines)
+
 
 async def respond_to_message(ctx, response):
 	channel = ctx.message.channel
 	author = ctx.message.author
 	await channel.send("**<@{}>** {}".format(author.id, response))
 
+
 def flip(is_high):
 	result = random.randint(1, 10)
 	success = (is_high and result >= 6) or ((not is_high) and result <= 5)
 	return "rolled high/low calling **{}**\n`{}`\nOutcome: **{}**".format("high" if is_high else "low", result, "SUCCESS" if success else "FAILURE")
+
 
 async def roll_dice(ctx, dice, diff, *arg):
 	logger.debug("rolling dice")
@@ -126,6 +155,7 @@ async def roll_dice(ctx, dice, diff, *arg):
 
 	msg = contract_roll(dice, diff, exert, label)
 	await respond_to_message(ctx, msg)
+
 
 def contract_roll( num_dice, difficulty=6, exert=False, label_text=None):
 	gt_9_diff_text = ""
@@ -154,6 +184,8 @@ def contract_roll( num_dice, difficulty=6, exert=False, label_text=None):
 	return "\n".join(response)
 
 
+# This class allows each registered command to have a different reference, allowing the automated generation of
+# Discord bot commands.
 class CommandHelper:
 	def __init__(self, command_name, num_dice, difficulty):
 		@commands.command(name=command_name)
@@ -161,16 +193,18 @@ class CommandHelper:
 			await roll_dice(ctx, num_dice, difficulty, args)
 		self.command = d_command
 
+
 def create_roll_combinations(dice_bot):
-	for dice in range(MIN_DICE,MAX_DICE):
+	for dice in range(MIN_DICE, MAX_DICE + 1):
 		user_command = "!{}".format(dice)
 		obj = CommandHelper(user_command, dice, DEFAULT_DIFFICULTY)
 		dice_bot.add_command(obj.command)
 
-		for diff in range(MIN_DIFFICULTY,MAX_DIFFICULTY):
+		for diff in range(MIN_DIFFICULTY, MAX_DIFFICULTY + 1):
 			user_command = "!{}@{}".format(dice, diff)
 			obj = CommandHelper(user_command, dice, diff)
 			dice_bot.add_command(obj.command)
+
 
 create_roll_combinations(bot)
 bot.run(os.environ["BOT_PASSWORD"])
