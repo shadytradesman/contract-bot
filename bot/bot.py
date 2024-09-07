@@ -5,8 +5,9 @@ import discord
 from discord.ext import commands
 
 logger = logging.getLogger('bot')
-bot_invite_url = "https://discord.com/api/oauth2/authorize?client_id=944989207665967124&permissions=309237738560&scope=bot"
+bot_invite_url = "https://discord.com/oauth2/authorize?client_id=944989207665967124"
 bot_repo_url = "https://github.com/shadytradesman/contract-bot"
+bot_info_url = "https://thecontractrpg.com/info/discord-bot/"
 TOKENS = {
 		"prefix": "!!",
 		"roll_seperator": "@",
@@ -88,6 +89,7 @@ async def roll_high(ctx):
 	flip_results = flip(True)
 	await respond_to_message(ctx, flip_results)
 
+
 @bot.command(name='!help')
 async def call_for_help(ctx):
 	await respond_to_message(ctx, help_message())
@@ -100,9 +102,11 @@ async def invalid_usage(ctx, error):
 def help_message():
 	help_lines = [
 		"**Welcome to The Contract's Dice Rolling Bot!**",
-		"This bot can help you roll dice for the game The Contract https://www.TheContractRPG.com/ ",
-		"Contribute to my source code: {}".format(bot_repo_url),
-		"Add this bot to your server: {}".format(bot_invite_url), usage_message()
+		"This bot can help you roll dice for the game [The Contract RPG](https://www.TheContractRPG.com/) ",
+		"Contribute to my source code: [click here]({})".format(bot_repo_url),
+		"Add this bot to your server: [click here]({})".format(bot_invite_url),
+		"Read the Privacy Policy: [click here]({})".format(bot_info_url),
+		usage_message(),
 	]
 	return "\n".join(help_lines)
 
