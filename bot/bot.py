@@ -172,10 +172,10 @@ def contract_roll( num_dice, difficulty=6, exert=False, label_text=None):
 	for res in results:
 		if res >= difficulty:
 			outcome += 1
-			if res == 10:
-				outcome += 1
-				if res == 1:
-					outcome -= 1
+		if res == 10:
+			outcome += 1
+		if res == 1:
+			outcome -= 1
 	if exert:
 		outcome += 1
 	exert_text = "*Exerting* " if exert else ""
