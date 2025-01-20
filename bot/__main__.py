@@ -1,8 +1,6 @@
-import sys
 import logging
-from .bot import run_discord_bot
 import os
-
+from .bot import run_bot
 
 def setup_logging():
 	cwd = os.getcwd()
@@ -18,4 +16,6 @@ def setup_logging():
 	logger.addHandler(handler)
 
 setup_logging()
-sys.exit(run_discord_bot())
+
+run_bot()
+
