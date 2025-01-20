@@ -117,6 +117,16 @@ def get_general_roll_response(num_dice, dice_type):
 	response.append("`{}`".format(results))
 	if num_dice > 1:
 		response.append("Sum: **{}**".format(outcome))
+	if dice_type == 10:
+		outcome = 0
+		for res in results:
+			if res >= DEFAULT_DIFFICULTY:
+				outcome += 1
+			if res == 10:
+				outcome += 1
+			if res == 1:
+				outcome -= 1
+		response.append("*Omit the 'd10' from your command to make a Contract roll. At Difficulty 6, this one's Outcome would have been {}*".format(outcome))
 	return "\n".join(response)
 
 
